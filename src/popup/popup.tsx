@@ -1,12 +1,59 @@
 import { useState } from "react";
+import { extractLeetCodeProblem, extractUserCode } from "../utils/leetcode";
 
 function Popup() {
   const [input, setInput] = useState("");
+  const [response, setResponse] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendToOllama = async (prompt: string) => {
+    setLoading(true);
+    setResponse("");
+    const problem = extractLeetCodeProblem();
+    const code = extractUserCode();
+
+    console.log('Sending to Ollama:', { prompt, problem, code });
+
+    try {
+      const result = await chrome.runtime.sendMessage({
+        action: 'generateWithOllama',
+        params: {
+          prompt: `${prompt}\n\nProblem: ${problem.title}\n${problem.description}`,
+          extractedCode: code,
+          systemPrompt: 'You are a helpful LeetCode coding assistant. Provide clear, concise explanations and hints.',
+        },
+      });
+
+      console.log('Ollama result:', result);
+
+      if (result?.success && result?.data) {
+        setResponse(result.data.response || JSON.stringify(result.data));
+      } else {
+        setResponse('Error: ' + (result?.error || 'No response from Ollama'));
+      }
+    } catch (error: any) {
+      console.error('Ollama error:', error);
+      setResponse('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("User input:", input);
-    // Add your AI logic here
+    if (input.trim()) {
+      sendToOllama(input);
+    }
+  };
+
+  const handleQuickAction = (action: string) => {
+    const prompts: Record<string, string> = {
+      hint: 'Give me a hint to solve this problem without revealing the full solution.',
+      explain: 'Explain this problem and what approach I should consider.',
+      solution: 'Provide a complete solution with explanation.',
+      debug: 'Help me debug my current code and identify issues.',
+    };
+    sendToOllama(prompts[action]);
   };
 
   return (
@@ -26,19 +73,31 @@ function Popup() {
         <div className="space-y-3">
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-2">
-            <button className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button onClick={() => handleQuickAction('hint')} disabled={loading} className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
               💡 Get Hint
             </button>
-            <button className="bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button onClick={() => handleQuickAction('explain')} disabled={loading} className="bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
               📝 Explain
             </button>
-            <button className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button onClick={() => handleQuickAction('solution')} disabled={loading} className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
               🎯 Solution
             </button>
-            <button className="bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button onClick={() => handleQuickAction('debug')} disabled={loading} className="bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
               🐛 Debug
             </button>
           </div>
+
+          {/* Response Display */}
+          {loading && (
+            <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+              Generating response...
+            </div>
+          )}
+          {response && !loading && (
+            <div className="p-3 bg-blue-50 rounded-lg text-sm text-gray-800 whitespace-pre-wrap">
+              {response}
+            </div>
+          )}
 
           {/* Chat Input */}
           <form onSubmit={handleSubmit} className="mt-4">
@@ -52,7 +111,8 @@ function Popup() {
               />
               <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
               >
                 Send
               </button>
