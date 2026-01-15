@@ -21,14 +21,16 @@ export async function generateObjectResponce(params: GenerateObjectParams) {
     ? `${prompt}\n\nCode:\n${extractedCode}`
     : prompt;
 
+  const allMessages = [
+    ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+    ...(messages || []).map(m => ({ role: (m.role || 'user') as 'user' | 'assistant', content: m.content })),
+    { role: 'user' as const, content: userMessage },
+  ];
+
   const result = await generateObject({
     model,
     schema,
-    messages: [
-      ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-      ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-      { role: 'user' as const, content: userMessage },
-    ],
+    messages: allMessages,
   });
 
   return result;
