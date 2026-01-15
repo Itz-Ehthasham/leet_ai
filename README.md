@@ -4,6 +4,8 @@ Leety AI is a powerful developer-focused browser extension that brings an AI cod
 
 Unlike cloud-based AI tools, Leety AI runs entirely on your local machine using a locally hosted LLM.
 
+Read the Documentation of the Repo and Ollama 
+
 ✨ Key Features
 
 🧠 Local AI Processing – No data sent to external servers
