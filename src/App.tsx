@@ -4,12 +4,51 @@ import './App.css'
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'settings' | 'history'>('home')
   const [input, setInput] = useState('')
+  const [response, setResponse] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const sendToOllama = async (prompt: string) => {
+    setLoading(true)
+    setResponse('')
+
+    try {
+      const result = await chrome.runtime.sendMessage({
+        action: 'generateWithOllama',
+        params: {
+          prompt,
+          extractedCode: '',
+          systemPrompt: 'You are a helpful LeetCode coding assistant. Provide clear, concise explanations and hints.',
+        },
+      })
+
+      if (result?.success && result?.data) {
+        setResponse(result.data.response || JSON.stringify(result.data))
+      } else {
+        setResponse('Error: ' + (result?.error || 'No response from Ollama'))
+      }
+    } catch (error: any) {
+      setResponse('Error: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('User input:', input)
-    // Add your AI logic here
-    setInput('')
+    if (input.trim()) {
+      sendToOllama(input)
+      setInput('')
+    }
+  }
+
+  const handleQuickAction = (action: string) => {
+    const prompts: Record<string, string> = {
+      hint: 'Give me a hint to solve this problem without revealing the full solution.',
+      explain: 'Explain this problem and what approach I should consider.',
+      solution: 'Provide a complete solution with explanation.',
+      debug: 'Help me debug my current code and identify issues.',
+    }
+    sendToOllama(prompts[action])
   }
 
   return (
@@ -69,20 +108,32 @@ function App() {
             <div>
               <h2 className="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h2>
               <div className="grid grid-cols-2 gap-2">
-                <button className="bg-white hover:bg-blue-50 border-2 border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md">
+                <button onClick={() => handleQuickAction('hint')} disabled={loading} className="bg-white hover:bg-blue-50 border-2 border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md disabled:opacity-50">
                   💡 Get Hint
                 </button>
-                <button className="bg-white hover:bg-purple-50 border-2 border-purple-200 text-purple-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md">
+                <button onClick={() => handleQuickAction('explain')} disabled={loading} className="bg-white hover:bg-purple-50 border-2 border-purple-200 text-purple-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md disabled:opacity-50">
                   📝 Explain
                 </button>
-                <button className="bg-white hover:bg-green-50 border-2 border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md">
+                <button onClick={() => handleQuickAction('solution')} disabled={loading} className="bg-white hover:bg-green-50 border-2 border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md disabled:opacity-50">
                   🎯 Solution
                 </button>
-                <button className="bg-white hover:bg-orange-50 border-2 border-orange-200 text-orange-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md">
+                <button onClick={() => handleQuickAction('debug')} disabled={loading} className="bg-white hover:bg-orange-50 border-2 border-orange-200 text-orange-700 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-md disabled:opacity-50">
                   🐛 Debug
                 </button>
               </div>
             </div>
+
+            {/* Response Display */}
+            {loading && (
+              <div className="p-4 bg-gray-50 rounded-xl text-sm text-gray-600">
+                Generating response...
+              </div>
+            )}
+            {response && !loading && (
+              <div className="p-4 bg-blue-50 rounded-xl text-sm text-gray-800 whitespace-pre-wrap max-h-60 overflow-y-auto">
+                {response}
+              </div>
+            )}
 
             {/* Chat Input */}
             <div>
@@ -97,7 +148,8 @@ function App() {
                 />
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-3 rounded-xl font-medium transition-all hover:shadow-lg"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-3 rounded-xl font-medium transition-all hover:shadow-lg disabled:opacity-50"
                 >
                   Send Message
                 </button>
