@@ -4,7 +4,7 @@
     "description": "Enhance your LeetCode experience with AI-powered coding assistance",
     "version": "1.0.0",
     "permissions": ["storage", "activeTab", "scripting"],
-    "host_permissions": ["https://leetcode.com/*"],
+    "host_permissions": ["https://leetcode.com/*", "http://127.0.0.1:11434/*"],
     "action": {
         "default_popup": "index.html",
         "default_icon": {
